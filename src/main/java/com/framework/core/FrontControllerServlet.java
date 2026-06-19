@@ -44,10 +44,21 @@ public class FrontControllerServlet extends HttpServlet {
 
     public void processRequest(HttpServletRequest req, HttpServletResponse res)
         throws ServletException , IOException {
-        res.setContentType("text/plain");
+
             
-            String url = req.getRequestURI() ;
-            res.getWriter().println(url) ;
+        String url = req.getRequestURI();
+        String context = req.getContextPath();
+        String path = url.substring(context.length());
+
+        if (path.endsWith(".html") || path.endsWith(".css") || path.endsWith(".js")) {
+            res.setContentType("text/html");
+            RequestDispatcher dispatcher = req.getServletContext().getNamedDispatcher("default");
+            dispatcher.forward(req, res);
+            return;
+        }else{
+                res.setContentType("text/plain");
+                res.getWriter().println(url) ;
+            }
 
             for (String nom : listNomController) {
                 res.getWriter().println(nom) ;
