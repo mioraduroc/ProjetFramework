@@ -1,6 +1,8 @@
 package com.framework.core;
 
 import java.io.*;
+import java.lang.reflect.Method;
+
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import com.framework.core.Mapping;
@@ -64,8 +66,23 @@ public class FrontControllerServlet extends HttpServlet {
 
             Mapping resultUrlMethod = mapUrlMethod.get(mp) ;
             if (resultUrlMethod != null ) {
-                    res.getWriter().println("Controller : " + resultUrlMethod.getControllerClass().getName());
-                    res.getWriter().println("Method : " + resultUrlMethod.getMethod().getName());
+                    try {
+                        Object controllerInstance = resultUrlMethod
+                            .getControllerClass()
+                            .getDeclaredConstructor()
+                            .newInstance();
+
+                        Method meth = resultUrlMethod.getMethod();
+
+                        meth.invoke(controllerInstance);
+
+                        res.getWriter().println("Controller : " + resultUrlMethod.getControllerClass().getName());
+                        res.getWriter().println("Method : " + resultUrlMethod.getMethod().getName());
+                        res.getWriter().println(meth.invoke(controllerInstance));
+                        
+                    } catch (Exception e) {
+                        throw new ServletException("Erreur lors de l'exécution du controller", e);
+                    }
             } else {
                 res.getWriter().println("Aucun mapping trouvé pour cet url");
             }
