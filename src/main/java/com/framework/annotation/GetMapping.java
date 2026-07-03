@@ -6,4 +6,5 @@ import java.lang.annotation.*;
 @Target(ElementType.METHOD)
 public @interface GetMapping {
     String value(); // ex: "/home"
+    String method() default "GET" ;
 }
