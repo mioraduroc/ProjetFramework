@@ -5,10 +5,13 @@ import java.lang.reflect.Method;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.util.*;
+import com.framework.model.ModelAndView;
 
 public class FrontControllerServlet extends HttpServlet {
     
     private Map<MapUrlMethod, Mapping> mapUrlMethod;
+    private String prefixe = "" ;
+    private String suffixe = "" ;
 
     @Override
     @SuppressWarnings("unchecked")
@@ -16,6 +19,8 @@ public class FrontControllerServlet extends HttpServlet {
         // On récupère la map partagée qui a été créée par le Listener
         ServletContext context = getServletContext();
         this.mapUrlMethod = (Map<MapUrlMethod, Mapping>) context.getAttribute("urlMappings");
+        this.prefixe = (String) getServletContext().getInitParameter("view-prefixe") ;
+        this.suffixe = (String) getServletContext().getInitParameter("view-suffixe") ;
 
         if (this.mapUrlMethod == null) {
             throw new ServletException("Le mapping des URLs n'a pas été initialisé par le Listener.");
@@ -35,6 +40,9 @@ public class FrontControllerServlet extends HttpServlet {
     protected void processRequest(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         String path = req.getRequestURI().substring(req.getContextPath().length());
         String method = req.getMethod();
+        res.getWriter().println("URL demandée : " + path + " [" + method + "]");
+        res.getWriter().println("Prefixe : " + prefixe);
+        res.getWriter().println("Suffixe : " + suffixe);   
 
         if (path.endsWith(".html") || path.endsWith(".css") || path.endsWith(".js")) {
             req.getServletContext().getNamedDispatcher("default").forward(req, res);
@@ -56,8 +64,21 @@ public class FrontControllerServlet extends HttpServlet {
 
                 res.getWriter().println("Controller : " + resultUrlMethod.getControllerClass().getName());
                 res.getWriter().println("Method : " + resultUrlMethod.getMethod().getName());
-                
-                if (result != null) {
+
+                if( result instanceof ModelAndView){
+                    ModelAndView mv = ( ModelAndView) result ;
+                    String urlSuivant = prefixe + mv.getUrlSuivant() + suffixe ;
+
+                    if(mv.getList() != null){ 
+                        for( Map.Entry<String, String> entry : mv.getList().entrySet()){
+                            req.setAttribute(entry.getKey(),entry.getValue()) ;
+                        }
+                    }
+
+                    req.getRequestDispatcher(urlSuivant).forward(req,res) ;
+                    return ;
+                }
+                else{
                     res.getWriter().println("Retour : " + result.toString());
                 }
 
