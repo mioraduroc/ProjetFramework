@@ -6,10 +6,11 @@ import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
 import com.framework.util.ClasseUtilitaire;
 import java.util.Map;
-    
+
+import com.framework.core.Mapping;
 import com.framework.model.ModelAndView ;
 
-@WebListener // Cette annotation permet à Tomcat de détecter automatiquement le Listener    9342
+//@WebListener // Cette annotation permet à Tomcat de détecter automatiquement le Listener  
 public class FrontControllerListener implements ServletContextListener {
 
     @Override
@@ -29,8 +30,15 @@ public class FrontControllerListener implements ServletContextListener {
             
             Map<MapUrlMethod, Mapping> mapUrlMethod = util.scanPackageEtMethod(annotationClass, packageController);
             
+            System.out.println("Nombre de routes trouvées : " + mapUrlMethod.size());
+
             // On enregistre la map dans le ServletContext pour qu'elle soit accessible partout
             context.setAttribute("urlMappings", mapUrlMethod);
+
+            System.out.println(
+                "[Framework] Nombre de mappings : "
+                + mapUrlMethod.size()
+            );
             
             System.out.println("[Framework] Scan terminé avec succès. Mappings enregistrés.");
         } catch (Exception e) {
