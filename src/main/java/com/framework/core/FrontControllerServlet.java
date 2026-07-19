@@ -4,8 +4,14 @@ import java.io.*;
 import java.lang.reflect.Method;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
+import com.framework.core.MapUrlMethod;
+
 import java.util.*;
 import com.framework.model.ModelAndView;
+
+// ajout spring 
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
 
 public class FrontControllerServlet extends HttpServlet {
     
@@ -16,7 +22,7 @@ public class FrontControllerServlet extends HttpServlet {
     @Override
     @SuppressWarnings("unchecked")
     public void init() throws ServletException {
-        // On récupère la map partagée qui a été créée par le Listener
+
         ServletContext context = getServletContext();
         this.mapUrlMethod = (Map<MapUrlMethod, Mapping>) context.getAttribute("urlMappings");
         this.prefixe = (String) getServletContext().getInitParameter("view-prefixe") ;
@@ -56,11 +62,39 @@ public class FrontControllerServlet extends HttpServlet {
 
         if (resultUrlMethod != null) {
             try {
+
                 Object controllerInstance = resultUrlMethod.getControllerClass().getDeclaredConstructor().newInstance();
 
                 Method meth = resultUrlMethod.getMethod();
                 
-                Object result = meth.invoke(controllerInstance);
+                // Object result = meth.invoke(controllerInstance);
+
+                Object result = null;
+
+                WebApplicationContext springContext = WebApplicationContextUtils.getWebApplicationContext(getServletContext());
+
+                Class<?>[] parameterTypes = meth.getParameterTypes();
+                Object[] parameters = new Object[parameterTypes.length];
+
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    Class<?> type = parameterTypes[i];
+
+                    if (org.springframework.context.ApplicationContext.class.isAssignableFrom(type)) {
+                        parameters[i] = springContext;
+                    } 
+                    else if (springContext != null) {
+                        try {
+                            parameters[i] = springContext.getBean(type);
+                        } catch (org.springframework.beans.factory.NoSuchBeanDefinitionException e) {
+                            parameters[i] = null; 
+                        }
+                    } 
+                    else {
+                        parameters[i] = null;
+                    }
+                }
+
+                result = meth.invoke(controllerInstance, parameters);
 
                 res.getWriter().println("Controller : " + resultUrlMethod.getControllerClass().getName());
                 res.getWriter().println("Method : " + resultUrlMethod.getMethod().getName());
