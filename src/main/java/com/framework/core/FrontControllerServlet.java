@@ -52,6 +52,8 @@ public class FrontControllerServlet extends HttpServlet {
             return;
         }
 
+        res.setContentType("text/plain;charset=UTF-8");
+        
         MapUrlMethod mp = new MapUrlMethod(path, method);
         Mapping resultUrlMethod = mapUrlMethod.get(mp);
 
