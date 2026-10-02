@@ -4,8 +4,7 @@ import java.io.*;
 import java.lang.reflect.Method;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
-import com.framework.core.MapUrlMethod;
-import com.framework.core.Mapping;
+import com.framework.annotation.Apirest;
 
 import java.util.*;
 import com.framework.model.ModelAndView;
@@ -47,17 +46,12 @@ public class FrontControllerServlet extends HttpServlet {
     protected void processRequest(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         String path = req.getRequestURI().substring(req.getContextPath().length());
         String method = req.getMethod();
-        res.getWriter().println("URL demandée : " + path + " [" + method + "]");
-        res.getWriter().println("Prefixe : " + prefixe);
-        res.getWriter().println("Suffixe : " + suffixe);   
 
         if (path.endsWith(".html") || path.endsWith(".css") || path.endsWith(".js")) {
             req.getServletContext().getNamedDispatcher("default").forward(req, res);
             return;
         }
 
-        // res.setContentType("text/plain;charset=UTF-8");
-        
         MapUrlMethod mp = new MapUrlMethod(path, method);
         Mapping resultUrlMethod = mapUrlMethod.get(mp);
 
@@ -97,6 +91,13 @@ public class FrontControllerServlet extends HttpServlet {
 
                 result = meth.invoke(controllerInstance, parameters);
 
+                // Json jsonAnnotation = meth.getAnnotation(Json.class);
+                // if (jsonAnnotation != null ) {
+                //     res.setContentType("application/json;charset=UTF-8");
+                //     res.getWriter().println(toJson(result));
+                //     return;
+                // }
+
                 if (meth.isAnnotationPresent(Apirest.class)) {
                     res.setContentType("application/json;charset=UTF-8");
                     res.getWriter().println(toJson(result));
@@ -135,7 +136,6 @@ public class FrontControllerServlet extends HttpServlet {
             res.getWriter().println("Aucun mapping trouvé pour l'URL : " + path + " [" + method + "]");
         }
     }
-
 
     private String toJson(Object value) {
         if (value == null) {
@@ -215,5 +215,4 @@ public class FrontControllerServlet extends HttpServlet {
                 .replace("\r", "\\r");
         return "\"" + text + "\"";
     }
-
 }
