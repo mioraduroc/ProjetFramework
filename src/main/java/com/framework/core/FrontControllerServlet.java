@@ -4,7 +4,7 @@ import java.io.*;
 import java.lang.reflect.Method;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
-import com.framework.core.MapUrlMethod;
+import com.framework.annotation.Apirest;
 
 import java.util.*;
 import com.framework.model.ModelAndView;
@@ -46,9 +46,6 @@ public class FrontControllerServlet extends HttpServlet {
     protected void processRequest(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         String path = req.getRequestURI().substring(req.getContextPath().length());
         String method = req.getMethod();
-        res.getWriter().println("URL demandée : " + path + " [" + method + "]");
-        res.getWriter().println("Prefixe : " + prefixe);
-        res.getWriter().println("Suffixe : " + suffixe);   
 
         if (path.endsWith(".html") || path.endsWith(".css") || path.endsWith(".js")) {
             req.getServletContext().getNamedDispatcher("default").forward(req, res);
@@ -96,6 +93,23 @@ public class FrontControllerServlet extends HttpServlet {
 
                 result = meth.invoke(controllerInstance, parameters);
 
+                // Json jsonAnnotation = meth.getAnnotation(Json.class);
+                // if (jsonAnnotation != null ) {
+                //     res.setContentType("application/json;charset=UTF-8");
+                //     res.getWriter().println(toJson(result));
+                //     return;
+                // }
+
+                if (meth.isAnnotationPresent(Apirest.class)) {
+                    res.setContentType("application/json;charset=UTF-8");
+                    res.getWriter().println(toJson(result));
+                    return;
+                }
+
+                res.setContentType("text/plain;charset=UTF-8");
+                res.getWriter().println("URL demandée : " + path + " [" + method + "]");
+                res.getWriter().println("Prefixe : " + prefixe);
+                res.getWriter().println("Suffixe : " + suffixe);
                 res.getWriter().println("Controller : " + resultUrlMethod.getControllerClass().getName());
                 res.getWriter().println("Method : " + resultUrlMethod.getMethod().getName());
 
@@ -123,5 +137,84 @@ public class FrontControllerServlet extends HttpServlet {
             res.setStatus(HttpServletResponse.SC_NOT_FOUND);
             res.getWriter().println("Aucun mapping trouvé pour l'URL : " + path + " [" + method + "]");
         }
+    }
+
+    private String toJson(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof Number || value instanceof Boolean) {
+            return value.toString();
+        }
+        if (value instanceof Map<?, ?> map) {
+            StringBuilder json = new StringBuilder("{");
+            boolean first = true;
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (!first) {
+                    json.append(",");
+                }
+                json.append(toJson(String.valueOf(entry.getKey())))
+                    .append(":")
+                    .append(toJson(entry.getValue()));
+                first = false;
+            }
+            return json.append("}").toString();
+        }
+        if (value instanceof Iterable<?> iterable) {
+            StringBuilder json = new StringBuilder("[");
+            boolean first = true;
+            for (Object item : iterable) {
+                if (!first) {
+                    json.append(",");
+                }
+                json.append(toJson(item));
+                first = false;
+            }
+            return json.append("]").toString();
+        }
+        if (value.getClass().isArray()) {
+            StringBuilder json = new StringBuilder("[");
+            int length = java.lang.reflect.Array.getLength(value);
+            for (int i = 0; i < length; i++) {
+                if (i > 0) {
+                    json.append(",");
+                }
+                json.append(toJson(java.lang.reflect.Array.get(value, i)));
+            }
+            return json.append("]").toString();
+        }
+        if (value.getClass().getPackageName().startsWith("com.app.")) {
+            StringBuilder json = new StringBuilder("{");
+            boolean first = true;
+            for (Method getter : value.getClass().getMethods()) {
+                if (getter.getName().startsWith("get")
+                        && getter.getName().length() > 3
+                        && getter.getParameterCount() == 0
+                        && !getter.getName().equals("getClass")) {
+                    try {
+                        String property = Character.toLowerCase(getter.getName().charAt(3))
+                                + getter.getName().substring(4);
+                        if (!first) {
+                            json.append(",");
+                        }
+                        json.append(toJson(property))
+                            .append(":")
+                            .append(toJson(getter.invoke(value)));
+                        first = false;
+                    } catch (ReflectiveOperationException e) {
+                        throw new IllegalArgumentException("Impossible de sérialiser "
+                                + value.getClass().getName(), e);
+                    }
+                }
+            }
+            return json.append("}").toString();
+        }
+
+        String text = value.toString()
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
+        return "\"" + text + "\"";
     }
 }
