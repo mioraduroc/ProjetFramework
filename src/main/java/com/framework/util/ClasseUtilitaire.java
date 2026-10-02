@@ -2,6 +2,7 @@ package com.framework.util;
 
 import com.framework.annotation.Controller;
 import com.framework.annotation.GetMapping;
+import com.framework.annotation.Json;
 import com.framework.core.Mapping;
 import com.framework.core.MapUrlMethod;
 import org.reflections.Reflections;
@@ -39,9 +40,20 @@ public Map<MapUrlMethod, Mapping> scanPackageEtMethod(String annotationValue, St
                 classesParAnnotation.put(valeurAnnotationActuelle, clazz);
 
                 for (Method m : clazz.getDeclaredMethods()) {
+                    String url = null;
+                    String method = null;
+
                     if (m.isAnnotationPresent(GetMapping.class)) {
-                        String url = m.getAnnotation(GetMapping.class).value();
-                        String method = m.getAnnotation(GetMapping.class).method();
+                        GetMapping mapping = m.getAnnotation(GetMapping.class);
+                        url = mapping.value();
+                        method = mapping.method();
+                    } else if (m.isAnnotationPresent(Json.class)) {
+                        Json mapping = m.getAnnotation(Json.class);
+                        url = mapping.value();
+                        method = mapping.method();
+                    }
+
+                    if (url != null) {
 
                         MapUrlMethod mapUrlMethod = new MapUrlMethod(url, method);
 

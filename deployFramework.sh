@@ -5,11 +5,11 @@ WEB_DIR="src/main/webapp"
 BUILD_DIR="build"
 LIB_DIR="lib"
 SERVLET_API_JAR="$LIB_DIR/servlet-api.jar"
-APP_TEST_WEBAPPS="/home/miora/Documents/4WebDyn/PROJET_FRAMEWORK/TestApplication/src/main/webapp"
+APP_TEST_WEBAPPS="/home/miora/Documents/S5/PROJET_FRAMEWORK/TestApplication/src/main/webapp"
 
 # Nettoyage et création du répertoire temporaire
 rm -rf $BUILD_DIR
-mkdir -p $BUILD_DIR/classes
+mkdir -p $BUILD_DIR/classes   
 mkdir -p $BUILD_DIR/lib
 
 # Compilation des fichiers Java avec le JAR des Servlets
