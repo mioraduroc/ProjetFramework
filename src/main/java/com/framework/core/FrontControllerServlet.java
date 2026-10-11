@@ -2,9 +2,13 @@ package com.framework.core;
 
 import java.io.*;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import com.framework.annotation.Apirest;
+import com.framework.core.MapUrlMethod;
+import com.framework.core.Mapping;
 
 import java.util.*;
 import com.framework.model.ModelAndView;
@@ -56,47 +60,63 @@ public class FrontControllerServlet extends HttpServlet {
         Mapping resultUrlMethod = mapUrlMethod.get(mp);
 
         if (resultUrlMethod != null) {
-            try {
 
+            Object result = null;
+
+            try {
                 Object controllerInstance = resultUrlMethod.getControllerClass().getDeclaredConstructor().newInstance();
 
                 Method meth = resultUrlMethod.getMethod();
                 
-                // Object result = meth.invoke(controllerInstance);
+                Map<String, String[]> mapParamUrl = req.getParameterMap();
 
-                Object result = null;
+                int nombreParametresMeth = meth.getParameterCount();
 
-                WebApplicationContext springContext = WebApplicationContextUtils.getWebApplicationContext(getServletContext());
+                Object[] tabParametresMeth = new Object[nombreParametresMeth];
 
-                Class<?>[] parameterTypes = meth.getParameterTypes();
-                Object[] parameters = new Object[parameterTypes.length];
+                if (nombreParametresMeth != 0) {
 
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    Class<?> type = parameterTypes[i];
+                    Parameter[] parametresMeth = meth.getParameters();
 
-                    if (org.springframework.context.ApplicationContext.class.isAssignableFrom(type)) {
-                        parameters[i] = springContext;
-                    } 
-                    else if (springContext != null) {
-                        try {
-                            parameters[i] = springContext.getBean(type);
-                        } catch (org.springframework.beans.factory.NoSuchBeanDefinitionException e) {
-                            parameters[i] = null; 
+                    for(int i = 0 ; i < nombreParametresMeth ; i++){
+                        Parameter param = parametresMeth[i];
+                        String paramName = param.getName();
+                        Class<?> paramType = param.getType();
+                        String paramValueHttp = req.getParameter(paramName);
+
+                        System.out.println("[DEBUG FRAMEWORK] Paramètre recherché : '" + paramName + "' | Valeur HTTP trouvée : " + paramValueHttp);
+                        if (paramValueHttp != null) {
+
+                            if (paramType == int.class || paramType == Integer.class) {
+                            
+                                    tabParametresMeth[i] = Integer.parseInt(paramValueHttp);
+                            } else if (paramType == long.class || paramType == Long.class) {
+                                    tabParametresMeth[i] = Long.parseLong(paramValueHttp);
+                            } else if (paramType == double.class || paramType == Double.class) {
+                                    tabParametresMeth[i] = Double.parseDouble(paramValueHttp);
+                            } else if (paramType == float.class || paramType == Float.class) {
+                                    tabParametresMeth[i] = Float.parseFloat(paramValueHttp);
+                            } else if (paramType == boolean.class || paramType == Boolean.class) {
+                                    tabParametresMeth[i] = Boolean.parseBoolean(paramValueHttp);
+                            } else if (paramType == String.class) {
+                                    tabParametresMeth[i] = paramValueHttp;
+                            } else {
+                                    tabParametresMeth[i] = null; 
+                            }
+
+                        } else {
+                            if (paramType == int.class || paramType == double.class || paramType == long.class || paramType == float.class) {
+                                tabParametresMeth[i] = 0;
+                            } else if (paramType == boolean.class) {
+                                tabParametresMeth[i] = false;
+                            } else {
+                                tabParametresMeth[i] = null; 
+                            }
                         }
-                    } 
-                    else {
-                        parameters[i] = null;
                     }
-                }
-
-                result = meth.invoke(controllerInstance, parameters);
-
-                // Json jsonAnnotation = meth.getAnnotation(Json.class);
-                // if (jsonAnnotation != null ) {
-                //     res.setContentType("application/json;charset=UTF-8");
-                //     res.getWriter().println(toJson(result));
-                //     return;
-                // }
+                } 
+                
+                result = meth.invoke(controllerInstance, tabParametresMeth);
 
                 if (meth.isAnnotationPresent(Apirest.class)) {
                     res.setContentType("application/json;charset=UTF-8");
@@ -136,6 +156,7 @@ public class FrontControllerServlet extends HttpServlet {
             res.getWriter().println("Aucun mapping trouvé pour l'URL : " + path + " [" + method + "]");
         }
     }
+
 
     private String toJson(Object value) {
         if (value == null) {
