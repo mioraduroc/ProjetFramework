@@ -3,6 +3,7 @@ package com.framework.core;
 import java.io.*;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Field;
 
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
@@ -18,10 +19,10 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
 public class FrontControllerServlet extends HttpServlet {
-    
+
     private Map<MapUrlMethod, Mapping> mapUrlMethod;
-    private String prefixe = "" ;
-    private String suffixe = "" ;
+    private String prefixe = "";
+    private String suffixe = "";
 
     @Override
     @SuppressWarnings("unchecked")
@@ -29,8 +30,8 @@ public class FrontControllerServlet extends HttpServlet {
 
         ServletContext context = getServletContext();
         this.mapUrlMethod = (Map<MapUrlMethod, Mapping>) context.getAttribute("urlMappings");
-        this.prefixe = (String) getServletContext().getInitParameter("view-prefixe") ;
-        this.suffixe = (String) getServletContext().getInitParameter("view-suffixe") ;
+        this.prefixe = (String) getServletContext().getInitParameter("view-prefixe");
+        this.suffixe = (String) getServletContext().getInitParameter("view-suffixe");
 
         if (this.mapUrlMethod == null) {
             throw new ServletException("Le mapping des URLs n'a pas été initialisé par le Listener.");
@@ -47,7 +48,8 @@ public class FrontControllerServlet extends HttpServlet {
         processRequest(req, res);
     }
 
-    protected void processRequest(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+    protected void processRequest(HttpServletRequest req, HttpServletResponse res)
+            throws ServletException, IOException {
         String path = req.getRequestURI().substring(req.getContextPath().length());
         String method = req.getMethod();
 
@@ -67,7 +69,7 @@ public class FrontControllerServlet extends HttpServlet {
                 Object controllerInstance = resultUrlMethod.getControllerClass().getDeclaredConstructor().newInstance();
 
                 Method meth = resultUrlMethod.getMethod();
-                
+
                 Map<String, String[]> mapParamUrl = req.getParameterMap();
 
                 int nombreParametresMeth = meth.getParameterCount();
@@ -78,44 +80,107 @@ public class FrontControllerServlet extends HttpServlet {
 
                     Parameter[] parametresMeth = meth.getParameters();
 
-                    for(int i = 0 ; i < nombreParametresMeth ; i++){
+                    for (int i = 0; i < nombreParametresMeth; i++) {
                         Parameter param = parametresMeth[i];
                         String paramName = param.getName();
                         Class<?> paramType = param.getType();
-                        String paramValueHttp = req.getParameter(paramName);
 
-                        System.out.println("[DEBUG FRAMEWORK] Paramètre recherché : '" + paramName + "' | Valeur HTTP trouvée : " + paramValueHttp);
-                        if (paramValueHttp != null) {
+                        if (paramType != int.class && paramType != Integer.class && paramType != long.class
+                                && paramType != Long.class &&
+                                paramType != double.class && paramType != Double.class && paramType != float.class
+                                && paramType != Float.class &&
+                                paramType != boolean.class && paramType != Boolean.class && paramType != String.class) {
 
-                            if (paramType == int.class || paramType == Integer.class) {
-                            
-                                    tabParametresMeth[i] = Integer.parseInt(paramValueHttp);
-                            } else if (paramType == long.class || paramType == Long.class) {
-                                    tabParametresMeth[i] = Long.parseLong(paramValueHttp);
-                            } else if (paramType == double.class || paramType == Double.class) {
-                                    tabParametresMeth[i] = Double.parseDouble(paramValueHttp);
-                            } else if (paramType == float.class || paramType == Float.class) {
-                                    tabParametresMeth[i] = Float.parseFloat(paramValueHttp);
-                            } else if (paramType == boolean.class || paramType == Boolean.class) {
-                                    tabParametresMeth[i] = Boolean.parseBoolean(paramValueHttp);
-                            } else if (paramType == String.class) {
-                                    tabParametresMeth[i] = paramValueHttp;
-                            } else {
-                                    tabParametresMeth[i] = null; 
+                            String className = paramType.getName();
+                            System.out.println("[DEBUG FRAMEWORK] Paramètre de type objet détecté : " + className);
+
+                            try {
+                                Object paramObject = paramType.getDeclaredConstructor().newInstance();
+
+                                Field[] champs = paramType.getDeclaredFields();
+                                for (Field champ : champs) {
+                                    champ.setAccessible(true);
+                                    String nomChamp = champ.getName();
+                                    Class<?> typeChamp = champ.getType();
+                                    System.out.println("[DEBUG FRAMEWORK] Traitement du champ : " + nomChamp
+                                            + " de type : " + typeChamp.getName());
+
+                                    String valeurChampHttp = req.getParameter(nomChamp);
+                                    if (valeurChampHttp != null) {
+                                        if (typeChamp == int.class || typeChamp == Integer.class) {
+                                            champ.set(paramObject, Integer.parseInt(valeurChampHttp));
+                                        } else if (typeChamp == long.class || typeChamp == Long.class) {
+                                            champ.set(paramObject, Long.parseLong(valeurChampHttp));
+                                        } else if (typeChamp == double.class || typeChamp == Double.class) {
+                                            champ.set(paramObject, Double.parseDouble(valeurChampHttp));
+                                        } else if (typeChamp == float.class || typeChamp == Float.class) {
+                                            champ.set(paramObject, Float.parseFloat(valeurChampHttp));
+                                        } else if (typeChamp == boolean.class || typeChamp == Boolean.class) {
+                                            champ.set(paramObject, Boolean.parseBoolean(valeurChampHttp));
+                                        } else if (typeChamp == String.class) {
+                                            champ.set(paramObject, valeurChampHttp);
+                                        } else {
+                                            System.out.println("[DEBUG FRAMEWORK] Type de champ non pris en charge : "
+                                                    + typeChamp.getName());
+                                        }
+                                        System.out.println("[DEBUG FRAMEWORK] Champ " + nomChamp
+                                                + " rempli avec la valeur : " + valeurChampHttp);
+
+                                        tabParametresMeth[i] = paramObject;
+
+                                    } else {
+                                        System.out
+                                                .println("[DEBUG FRAMEWORK] Aucune valeur HTTP trouvée pour le champ : "
+                                                        + nomChamp);
+                                    }
+
+                                }
+
+                            } catch (Exception e) {
+                                e.printStackTrace();
                             }
 
                         } else {
-                            if (paramType == int.class || paramType == double.class || paramType == long.class || paramType == float.class) {
-                                tabParametresMeth[i] = 0;
-                            } else if (paramType == boolean.class) {
-                                tabParametresMeth[i] = false;
+
+                            String paramValueHttp = req.getParameter(paramName);
+
+                            System.out.println("[DEBUG FRAMEWORK] Paramètre recherché : '" + paramName
+                                    + "' | Valeur HTTP trouvée : " + paramValueHttp);
+
+                            if (paramValueHttp != null) {
+
+                                if (paramType == int.class || paramType == Integer.class) {
+
+                                    tabParametresMeth[i] = Integer.parseInt(paramValueHttp);
+                                } else if (paramType == long.class || paramType == Long.class) {
+                                    tabParametresMeth[i] = Long.parseLong(paramValueHttp);
+                                } else if (paramType == double.class || paramType == Double.class) {
+                                    tabParametresMeth[i] = Double.parseDouble(paramValueHttp);
+                                } else if (paramType == float.class || paramType == Float.class) {
+                                    tabParametresMeth[i] = Float.parseFloat(paramValueHttp);
+                                } else if (paramType == boolean.class || paramType == Boolean.class) {
+                                    tabParametresMeth[i] = Boolean.parseBoolean(paramValueHttp);
+                                } else if (paramType == String.class) {
+                                    tabParametresMeth[i] = paramValueHttp;
+                                } else {
+                                    tabParametresMeth[i] = null;
+                                }
+
                             } else {
-                                tabParametresMeth[i] = null; 
+                                if (paramType == int.class || paramType == double.class || paramType == long.class
+                                        || paramType == float.class) {
+                                    tabParametresMeth[i] = 0;
+                                } else if (paramType == boolean.class) {
+                                    tabParametresMeth[i] = false;
+                                } else {
+                                    tabParametresMeth[i] = null;
+                                }
                             }
+
                         }
                     }
-                } 
-                
+                }
+
                 result = meth.invoke(controllerInstance, tabParametresMeth);
 
                 if (meth.isAnnotationPresent(Apirest.class)) {
@@ -131,20 +196,19 @@ public class FrontControllerServlet extends HttpServlet {
                 res.getWriter().println("Controller : " + resultUrlMethod.getControllerClass().getName());
                 res.getWriter().println("Method : " + resultUrlMethod.getMethod().getName());
 
-                if( result instanceof ModelAndView){
-                    ModelAndView mv = ( ModelAndView) result ;
-                    String urlSuivant = prefixe + mv.getUrlSuivant() + suffixe ;
+                if (result instanceof ModelAndView) {
+                    ModelAndView mv = (ModelAndView) result;
+                    String urlSuivant = prefixe + mv.getUrlSuivant() + suffixe;
 
-                    if(mv.getList() != null){ 
-                        for( Map.Entry<String, String> entry : mv.getList().entrySet()){
-                            req.setAttribute(entry.getKey(),entry.getValue()) ;
+                    if (mv.getList() != null) {
+                        for (Map.Entry<String, String> entry : mv.getList().entrySet()) {
+                            req.setAttribute(entry.getKey(), entry.getValue());
                         }
                     }
 
-                    req.getRequestDispatcher(urlSuivant).forward(req,res) ;
-                    return ;
-                }
-                else{
+                    req.getRequestDispatcher(urlSuivant).forward(req, res);
+                    return;
+                } else {
                     res.getWriter().println("Retour : " + result.toString());
                 }
 
@@ -156,7 +220,6 @@ public class FrontControllerServlet extends HttpServlet {
             res.getWriter().println("Aucun mapping trouvé pour l'URL : " + path + " [" + method + "]");
         }
     }
-
 
     private String toJson(Object value) {
         if (value == null) {
@@ -173,8 +236,8 @@ public class FrontControllerServlet extends HttpServlet {
                     json.append(",");
                 }
                 json.append(toJson(String.valueOf(entry.getKey())))
-                    .append(":")
-                    .append(toJson(entry.getValue()));
+                        .append(":")
+                        .append(toJson(entry.getValue()));
                 first = false;
             }
             return json.append("}").toString();
@@ -217,8 +280,8 @@ public class FrontControllerServlet extends HttpServlet {
                             json.append(",");
                         }
                         json.append(toJson(property))
-                            .append(":")
-                            .append(toJson(getter.invoke(value)));
+                                .append(":")
+                                .append(toJson(getter.invoke(value)));
                         first = false;
                     } catch (ReflectiveOperationException e) {
                         throw new IllegalArgumentException("Impossible de sérialiser "
