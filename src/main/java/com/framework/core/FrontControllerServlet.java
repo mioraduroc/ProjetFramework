@@ -153,9 +153,36 @@ public class FrontControllerServlet extends HttpServlet {
                                         tabParametresMeth[i] = paramObject;
 
                                     } else {
-                                        System.out
-                                                .println("[DEBUG FRAMEWORK] Aucune valeur HTTP trouvée pour le champ : "
-                                                        + nomChamp);
+                                        Object paramInterieurObject = typeChamp.getDeclaredConstructor().newInstance();
+                                        Field[] champsInterieurs = typeChamp.getDeclaredFields();
+                                        for (Field champInterieur : champsInterieurs) {
+                                            champInterieur.setAccessible(true);
+                                            String nomChampInterieur = champInterieur.getName();
+                                            Class<?> typeChampInterieur = champInterieur.getType();
+                                            String valeurChampInterieurHttp = req.getParameter(nomChampInterieur);
+
+                                            if (valeurChampInterieurHttp != null) {
+                                                if (typeChampInterieur == int.class || typeChampInterieur == Integer.class) {
+                                                    champInterieur.set(paramInterieurObject, Integer.parseInt(valeurChampInterieurHttp));
+                                                } else if (typeChampInterieur == long.class || typeChampInterieur == Long.class) {
+                                                    champInterieur.set(paramInterieurObject, Long.parseLong(valeurChampInterieurHttp));
+                                                } else if (typeChampInterieur == double.class || typeChampInterieur == Double.class) {
+                                                    champInterieur.set(paramInterieurObject, Double.parseDouble(valeurChampInterieurHttp));
+                                                } else if (typeChampInterieur == float.class || typeChampInterieur == Float.class) {
+                                                    champInterieur.set(paramInterieurObject, Float.parseFloat(valeurChampInterieurHttp));
+                                                } else if (typeChampInterieur == boolean.class || typeChampInterieur == Boolean.class) {
+                                                    champInterieur.set(paramInterieurObject, Boolean.parseBoolean(valeurChampInterieurHttp));
+                                                } else if (typeChampInterieur == String.class) {
+                                                    champInterieur.set(paramInterieurObject, valeurChampInterieurHttp);
+                                                }
+                                            }
+                                        }
+                                        champ.set(paramObject, paramInterieurObject);
+                                        tabParametresMeth[i] = paramObject;
+                                        
+                                        // System.out
+                                        //         .println("[DEBUG FRAMEWORK] Aucune valeur HTTP trouvée pour le champ : "
+                                        //                 + nomChamp);
                                     }
 
                                 }
