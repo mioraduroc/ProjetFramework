@@ -7,17 +7,25 @@ import java.lang.reflect.Field;
 
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
+import jakarta.servlet.annotation.MultipartConfig;
+
 import com.framework.annotation.Apirest;
 import com.framework.core.MapUrlMethod;
 import com.framework.core.Mapping;
 
 import java.util.*;
 import com.framework.model.ModelAndView;
+import com.framework.model.Mapfile;
 
 // ajout spring 
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
+@MultipartConfig(
+        fileSizeThreshold = 1024 * 1024, // 1 MB
+        maxFileSize = 1024 * 1024 * 10, // 10 MB
+        maxRequestSize = 1024 * 1024 * 50 // 50 MB
+)
 public class FrontControllerServlet extends HttpServlet {
 
     private Map<MapUrlMethod, Mapping> mapUrlMethod;
@@ -119,6 +127,22 @@ public class FrontControllerServlet extends HttpServlet {
                                             champ.set(paramObject, Boolean.parseBoolean(valeurChampHttp));
                                         } else if (typeChamp == String.class) {
                                             champ.set(paramObject, valeurChampHttp);
+                                        } else if ( typeChamp == Mapfile.class ) {
+                                            System.out.println("[DEBUG FRAMEWORK] Traitement du champ de type Mapfile : " + nomChamp);
+                                           Part filePart = req.getPart(nomChamp);
+                                           if (filePart != null && filePart.getSize() > 0) {
+                                               String fileName = filePart.getSubmittedFileName();
+                                               String fileExtension = "";
+                                               int dotIndex = fileName.lastIndexOf('.');
+                                               if (dotIndex > 0 && dotIndex < fileName.length() - 1) {
+                                                   fileExtension = fileName.substring(dotIndex + 1);
+                                               }
+                                               byte[] fileContent = filePart.getInputStream().readAllBytes();
+                                               Mapfile mapfile = new Mapfile(fileName, fileExtension, fileContent);
+                                               champ.set(paramObject, mapfile);
+                                           } else {
+                                               champ.set(paramObject, null);
+                                           }
                                         } else {
                                             System.out.println("[DEBUG FRAMEWORK] Type de champ non pris en charge : "
                                                     + typeChamp.getName());
