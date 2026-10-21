@@ -4,8 +4,12 @@ import com.framework.annotation.Controller;
 import com.framework.annotation.GetMapping;
 import com.framework.annotation.Json;
 import com.framework.core.Mapping;
+import com.framework.model.MySession;
 import com.framework.core.MapUrlMethod;
 import com.framework.model.Mapfile;
+import com.framework.model.MySession;
+
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.HttpServletRequest;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
@@ -84,7 +88,22 @@ public class ClasseUtilitaire {
             System.out.println("Traitement du champ : " + nomChamp + " | Type : " + typeChamp.getName());
 
             if (typeChamp == Mapfile.class) {
+                System.out.println("le typeChamp est : " + typeChamp.getName());
+                System.out.println("Traitement du champ Mapfile : " + nomChamp);
+                
                 champ.set(objet, construireMapfile(nomChamp, req));
+                continue;
+            }
+
+            if (typeChamp == MySession.class) {
+                System.out.println("le typeChamp est : " + typeChamp.getName());
+                System.out.println("Traitement du champ MySession : " + nomChamp);
+
+                MySession mySession = (MySession) req.getAttribute("mySession");
+                if (mySession == null) {
+                    throw new IllegalStateException("MySession n'est pas disponible dans la requête.");
+                }
+                champ.set(objet, mySession);
                 continue;
             }
 
