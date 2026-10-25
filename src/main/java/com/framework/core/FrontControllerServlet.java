@@ -153,6 +153,8 @@ public class FrontControllerServlet extends HttpServlet {
 
                     if( session != null) {
                         Object userConnectedId = session.getAttribute(userConnectedIdSessionName);
+                        System.out.println("Vérification de l'authentification : userConnectedId = " + userConnectedId);
+
                         if( userConnectedId != null) {
                             estConnecte = true ;
                         }
@@ -165,6 +167,30 @@ public class FrontControllerServlet extends HttpServlet {
                         res.getWriter().println("Accès refusé : Authentification requise (Erreur 403)");
 
                         return;
+                    }
+
+                    Auth authAnnotation = meth.getAnnotation(Auth.class);
+                    String[] rolesAutorises = authAnnotation.roles();
+
+                    if ( rolesAutorises.length > 0 ){
+                        String userRole = (String) req.getSession().getAttribute("role");
+                        boolean roleAutorise = false ;
+
+                        if( userRole != null) {
+                            for (String role : rolesAutorises) {
+                                if (role.equals(userRole)) {
+                                    roleAutorise = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if( !roleAutorise) {
+                            res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            res.setContentType("text/plain;charset=UTF-8");
+                            res.getWriter().println("Accès refusé : Rôle non autorisé (Erreur 403)");
+                            return;
+                        }
                     }
                 }
 
