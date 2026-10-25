@@ -9,6 +9,8 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.MultipartConfig;
 
 import com.framework.annotation.Apirest;
+import com.framework.annotation.Auth;
+
 import com.framework.core.MapUrlMethod;
 import com.framework.core.Mapping;
 import com.framework.model.MySession;
@@ -137,6 +139,34 @@ public class FrontControllerServlet extends HttpServlet {
                 }
 
                 result = meth.invoke(controllerInstance, tabParametresMeth);
+
+                if (meth.isAnnotationPresent(Auth.class)) {
+                    String userConnectedIdSessionName = getServletContext().getInitParameter("userConnectedId");
+
+                    if (userConnectedIdSessionName == null || userConnectedIdSessionName.isEmpty()) {
+                        userConnectedIdSessionName = "userConnected";
+                        throw new ServletException("Le paramètre 'userConnectedId' n'est pas défini dans le web.xml.");
+                    }
+
+                    HttpSession session = req.getSession(false);
+                    boolean estConnecte = false ;
+
+                    if( session != null) {
+                        Object userConnectedId = session.getAttribute(userConnectedIdSessionName);
+                        if( userConnectedId != null) {
+                            estConnecte = true ;
+                        }
+                    }
+
+                    if (!estConnecte) {
+                        // res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        res.setContentType("text/plain;charset=UTF-8");
+                        res.getWriter().println("Accès refusé : Authentification requise (Erreur 403)");
+
+                        return;
+                    }
+                }
 
                 if (meth.isAnnotationPresent(Apirest.class)) {
                     res.setContentType("application/json;charset=UTF-8");
