@@ -11,6 +11,7 @@ import jakarta.servlet.annotation.MultipartConfig;
 import com.framework.annotation.Apirest;
 import com.framework.core.MapUrlMethod;
 import com.framework.core.Mapping;
+import com.framework.model.MySession;
 
 import java.util.*;
 import com.framework.model.ModelAndView;
@@ -57,6 +58,13 @@ public class FrontControllerServlet extends HttpServlet {
 
     protected void processRequest(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
+
+        // HttpSession httpSession = req.getSession();   // Récupère la session native Tomcat
+        // MySession mySession = new MySession(httpSession);
+        // req.setAttribute("mySession", mySession);
+
+        // System.out.println("Session créée : " + mySession.getHttpSession().getId());
+
         String path = req.getRequestURI().substring(req.getContextPath().length());
         String method = req.getMethod();
 
@@ -93,6 +101,24 @@ public class FrontControllerServlet extends HttpServlet {
 
                         System.out.println("Paramètre : " + paramName + " | Type : " + paramType.getName() + " | Valeur HTTP : " + paramValueHttp);
 
+
+                        if( paramType == MySession.class) {
+
+                            HttpSession httpSession = req.getSession(true);
+
+                            // verif si l'instance unique de notre MySession existe déjà dans la session de ce client
+                            MySession mySession = (MySession) httpSession.getAttribute("MY_CUSTOM_SESSION_INSTANCE") ;
+
+                            if( mySession == null ){
+                                // creation et stockage 
+                                mySession = new MySession(httpSession) ;
+                                httpSession.setAttribute("MY_CUSTOM_SESSION_INSTANCE", mySession);
+                                System.out.println(" session crée et stockée");
+                            }
+                            tabParametresMeth[i] = mySession;
+                            continue;
+                        }
+                        
                         boolean typeSimple = paramType == String.class
                                 || paramType == int.class || paramType == Integer.class
                                 || paramType == long.class || paramType == Long.class
