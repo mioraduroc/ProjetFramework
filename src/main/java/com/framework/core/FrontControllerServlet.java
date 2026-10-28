@@ -142,25 +142,51 @@ public class FrontControllerServlet extends HttpServlet {
 
                 if (meth.isAnnotationPresent(Auth.class)) {
                     String userConnectedIdSessionName = getServletContext().getInitParameter("userConnectedId");
+                    String userConnectedRoleSessionName = getServletContext().getInitParameter("userConnectedRole");
+
 
                     if (userConnectedIdSessionName == null || userConnectedIdSessionName.isEmpty()) {
                         userConnectedIdSessionName = "userConnected";
                         throw new ServletException("Le paramètre 'userConnectedId' n'est pas défini dans le web.xml.");
                     }
 
+                    if (userConnectedRoleSessionName == null || userConnectedRoleSessionName.isEmpty()) {
+                        userConnectedRoleSessionName = "role";
+                        throw new ServletException("Le paramètre 'userConnectedRole' n'est pas défini dans le web.xml.");
+                    }
+
                     HttpSession session = req.getSession(false);
                     boolean estConnecte = false ;
+                    boolean estAutorise = false ;
 
                     if( session != null) {
                         Object userConnectedId = session.getAttribute(userConnectedIdSessionName);
-                        System.out.println("Vérification de l'authentification : userConnectedId = " + userConnectedId);
+                        Object userConnectedRole = session.getAttribute(userConnectedRoleSessionName);
+
+                        System.out.println("Vérification de l'authentification : userConnectedId = " + userConnectedId + ", userConnectedRole = " + userConnectedRole   );
 
                         if( userConnectedId != null) {
                             estConnecte = true ;
                         }
+
+                        if( userConnectedRole != null) {
+                            Auth authAnnotation = meth.getAnnotation(Auth.class);
+                            String[] rolesAutorises = authAnnotation.roles();
+
+                            if (rolesAutorises.length > 0) {
+                                for (String role : rolesAutorises) {
+                                    if (role.equals(userConnectedRole)) {
+                                        estAutorise = true;
+                                        break;
+                                    }
+                                }
+                            } else {
+                                estAutorise = true;
+                            }
+                        }
                     }
 
-                    if (!estConnecte) {
+                    if (!estConnecte || !estAutorise) {
                         // res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         res.setStatus(HttpServletResponse.SC_FORBIDDEN);
                         res.setContentType("text/plain;charset=UTF-8");
@@ -169,29 +195,30 @@ public class FrontControllerServlet extends HttpServlet {
                         return;
                     }
 
-                    Auth authAnnotation = meth.getAnnotation(Auth.class);
-                    String[] rolesAutorises = authAnnotation.roles();
+                   
+                    // Auth authAnnotation = meth.getAnnotation(Auth.class);
+                    // String[] rolesAutorises = authAnnotation.roles();
 
-                    if ( rolesAutorises.length > 0 ){
-                        String userRole = (String) req.getSession().getAttribute("role");
-                        boolean roleAutorise = false ;
+                    // if ( rolesAutorises.length > 0 ){
+                    //     String userRole = (String) req.getSession().getAttribute("role");
+                    //     boolean roleAutorise = false ;
 
-                        if( userRole != null) {
-                            for (String role : rolesAutorises) {
-                                if (role.equals(userRole)) {
-                                    roleAutorise = true;
-                                    break;
-                                }
-                            }
-                        }
+                    //     if( userRole != null) {
+                    //         for (String role : rolesAutorises) {
+                    //             if (role.equals(userRole)) {
+                    //                 roleAutorise = true;
+                    //                 break;
+                    //             }
+                    //         }
+                    //     }
 
-                        if( !roleAutorise) {
-                            res.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            res.setContentType("text/plain;charset=UTF-8");
-                            res.getWriter().println("Accès refusé : Rôle non autorisé (Erreur 403)");
-                            return;
-                        }
-                    }
+                    //     if( !roleAutorise) {
+                    //         res.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    //         res.setContentType("text/plain;charset=UTF-8");
+                    //         res.getWriter().println("Accès refusé : Rôle non autorisé (Erreur 403)");
+                    //         return;
+                    //     }
+                    // }
                 }
 
                 if (meth.isAnnotationPresent(Apirest.class)) {
